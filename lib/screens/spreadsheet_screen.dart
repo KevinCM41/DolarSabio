@@ -290,14 +290,14 @@ class _TransactionRow extends StatelessWidget {
           _InlineField(
               width: _kSpreadsheetColWidths[5],
               value: t.debito.toStringAsFixed(2),
-              textColor: AppTheme.accentRed,
+              textColor: AppTheme.accentPrimary,
               textAlign: TextAlign.right,
               onSave: (v) =>
                   onUpdate(t.id!, {'debito': double.tryParse(v) ?? t.debito})),
           _InlineField(
               width: _kSpreadsheetColWidths[6],
               value: t.credito.toStringAsFixed(2),
-              textColor: AppTheme.accentPrimary,
+              textColor: AppTheme.accentRed,
               textAlign: TextAlign.right,
               onSave: (v) => onUpdate(
                   t.id!, {'credito': double.tryParse(v) ?? t.credito})),
@@ -623,7 +623,7 @@ class _AddTransactionSheetState extends State<_AddTransactionSheet> {
                 child: TextFormField(
                   controller: _ctrls['debito'],
                   keyboardType: TextInputType.number,
-                  style: const TextStyle(color: AppTheme.accentRed, fontFamily: 'RobotoMono'),
+                  style: const TextStyle(color: AppTheme.accentPrimary, fontFamily: 'RobotoMono'),
                   decoration: InputDecoration(labelText: labels['debito'] ?? 'DÉBITO'),
                 ),
               ),
@@ -632,7 +632,7 @@ class _AddTransactionSheetState extends State<_AddTransactionSheet> {
                 child: TextFormField(
                   controller: _ctrls['credito'],
                   keyboardType: TextInputType.number,
-                  style: const TextStyle(color: AppTheme.accentPrimary, fontFamily: 'RobotoMono'),
+                  style: const TextStyle(color: AppTheme.accentRed, fontFamily: 'RobotoMono'),
                   decoration: InputDecoration(labelText: labels['credito'] ?? 'CRÉDITO'),
                 ),
               ),

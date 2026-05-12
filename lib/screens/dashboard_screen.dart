@@ -40,17 +40,17 @@ class DashboardScreen extends StatelessWidget {
                   Expanded(child: _MetricCard(
                     label: 'CRÉDITOS TOTALES',
                     value: '\$${fmt.format(summary.totalIncomes)}',
-                    valueColor: AppTheme.accentPrimary,
+                    valueColor: AppTheme.accentRed,
                     subtitle: '● Flujo Positivo',
-                    subtitleColor: AppTheme.accentPrimary,
+                    subtitleColor: AppTheme.accentRed,
                   )),
                   const SizedBox(width: 12),
                   Expanded(child: _MetricCard(
                     label: 'DÉBITOS TOTALES',
                     value: '\$${fmt.format(summary.totalExpenses)}',
-                    valueColor: AppTheme.accentRed,
+                    valueColor: AppTheme.accentPrimary,
                     subtitle: '● Pasivos Totales',
-                    subtitleColor: AppTheme.accentRed,
+                    subtitleColor: AppTheme.accentPrimary,
                   )),
                 ],
               );
@@ -66,13 +66,13 @@ class DashboardScreen extends StatelessWidget {
                 Expanded(child: _MetricCard(
                   label: 'CRÉDITOS',
                   value: '\$${fmt.format(summary.totalIncomes)}',
-                  valueColor: AppTheme.accentPrimary,
+                  valueColor: AppTheme.accentRed,
                 )),
                 const SizedBox(width: 12),
                 Expanded(child: _MetricCard(
                   label: 'DÉBITOS',
                   value: '\$${fmt.format(summary.totalExpenses)}',
-                  valueColor: AppTheme.accentRed,
+                  valueColor: AppTheme.accentPrimary,
                 )),
               ]),
             ]);
@@ -225,7 +225,7 @@ class _FlowChart extends StatelessWidget {
                   BarChartGroupData(x: 0, barRods: [
                     BarChartRodData(
                       toY: summary.totalIncomes,
-                      color: AppTheme.accentPrimary,
+                      color: AppTheme.accentRed,
                       width: 40,
                       borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(6)),
@@ -234,7 +234,7 @@ class _FlowChart extends StatelessWidget {
                   BarChartGroupData(x: 1, barRods: [
                     BarChartRodData(
                       toY: summary.totalExpenses,
-                      color: AppTheme.accentRed,
+                      color: AppTheme.accentPrimary,
                       width: 40,
                       borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(6)),
@@ -419,14 +419,14 @@ class _RecentActivity extends StatelessWidget {
                       if (t.credito > 0)
                         Text('+\$${t.credito.toStringAsFixed(2)}',
                             style: const TextStyle(
-                                color: AppTheme.accentPrimary,
+                                color: AppTheme.accentRed,
                                 fontWeight: FontWeight.w700,
                                 fontFamily: 'RobotoMono',
                                 fontSize: 13)),
                       if (t.debito > 0)
                         Text('-\$${t.debito.toStringAsFixed(2)}',
                             style: const TextStyle(
-                                color: AppTheme.accentRed,
+                                color: AppTheme.accentPrimary,
                                 fontWeight: FontWeight.w700,
                                 fontFamily: 'RobotoMono',
                                 fontSize: 13)),
@@ -544,7 +544,7 @@ class _EditSheetState extends State<_EditSheet> {
               child: TextField(
                 controller: _debitoCtrl,
                 keyboardType: TextInputType.number,
-                style: const TextStyle(color: AppTheme.accentRed),
+                style: const TextStyle(color: AppTheme.accentPrimary),
                 decoration: const InputDecoration(labelText: 'DÉBITO'),
               ),
             ),
@@ -553,7 +553,7 @@ class _EditSheetState extends State<_EditSheet> {
               child: TextField(
                 controller: _creditoCtrl,
                 keyboardType: TextInputType.number,
-                style: const TextStyle(color: AppTheme.accentPrimary),
+                style: const TextStyle(color: AppTheme.accentRed),
                 decoration: const InputDecoration(labelText: 'CRÉDITO'),
               ),
             ),
