@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "917698609166",
+    "project_id": "dolarsabio-496005",
+    "storage_bucket": "dolarsabio-496005.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:917698609166:android:2a50ab617a70b608e4fc5f",
+        "android_client_info": {
+          "package_name": "com.kevin.dolarsabio"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "917698609166-28evg01a3pla3sdoalg703q9bq6pksu6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kevin.dolarsabio",
+            "certificate_hash": "c9203596a8c9dcde7f38a1c1dfae90508f91322b"
+          }
+        },
+        {
+          "client_id": "917698609166-3he5demv4ocdppbl5a7uutbihqsqbo6m.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfELiMxeKOPSqC6oyMomvkPSKHZn3vxUw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "917698609166-3he5demv4ocdppbl5a7uutbihqsqbo6m.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "917698609166-6ik4siiss6j945hnmg5vk2ug9cjk6fvg.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.kevin.dolarsabio"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

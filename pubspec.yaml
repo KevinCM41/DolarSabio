@@ -1,0 +1,53 @@
+name: dolarsabio
+description: DolarSabio - Sistema de Gestión Financiera con IA
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+  google_sign_in: ^6.2.1
+
+  # UI & Charts
+  fl_chart: ^0.69.0
+  google_fonts: ^6.2.1
+  lucide_icons: ^0.257.0
+  flutter_animate: ^4.5.0
+
+  # Excel / Archivos
+  excel: ^4.0.6
+  file_picker: ^8.1.2
+  path_provider: ^2.1.4
+  share_plus: ^10.0.2
+
+  # PDF
+  pdf: ^3.11.1
+  printing: ^5.13.2
+
+  # AI Chatbot (HTTP para Groq/Gemini)
+  http: ^1.2.2
+  flutter_markdown: ^0.7.3
+
+  # Estado y utilidades
+  provider: ^6.1.2
+  shared_preferences: ^2.3.2
+  intl: ^0.19.0
+  uuid: ^4.4.2
+  file_saver: ^0.3.1
+  path: ^1.9.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
