@@ -4,17 +4,19 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // ── Colores base ──────────────────────────────────────────────────────────
-  static const Color darkBg = Color(0xFF0C0C0F);
-  static const Color darkSurface = Color(0xFF111114);
-  static const Color darkCard = Color(0xFF151518);
-  static const Color darkBorder = Color(0xFF222226);
-  static const Color darkMuted = Color(0xFF64748B);
-  static const Color darkText = Color(0xFFE2E8F0);
+  // ── Colores base mejorados ────────────────────────────────────────────────
+  static const Color darkBg = Color(0xFF0A0E27);        // Azul oscuro profesional
+  static const Color darkSurface = Color(0xFF121B3D);   // Superficie más profunda
+  static const Color darkCard = Color(0xFF1A2847);      // Card con gradiente azul
+  static const Color darkBorder = Color(0xFF2E3E6F);    // Borde más visible
+  static const Color darkMuted = Color(0xFF7C8FB8);     // Gris azulado
+  static const Color darkText = Color(0xFFF0F4FF);      // Blanco cálido
 
-  static const Color accentPrimary = Color(0xFF10B981); // emerald-500
-  static const Color accentRed = Color(0xFFEF4444);     // rose-500
-  static const Color accentIndigo = Color(0xFF6366F1);  // indigo-500
+  static const Color accentPrimary = Color(0xFF00D9FF); // Cyan vibrante
+  static const Color accentSecondary = Color(0xFF00B4E3); // Cyan oscuro
+  static const Color accentRed = Color(0xFFFF6B6B);     // Rojo moderno
+  static const Color accentIndigo = Color(0xFF7C5CFF);  // Púrpura vibrante
+  static const Color accentGreen = Color(0xFF00F5A0);   // Verde neón
 
   // ── ThemeData ─────────────────────────────────────────────────────────────
   static ThemeData get theme => ThemeData(
