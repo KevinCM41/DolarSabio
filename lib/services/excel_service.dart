@@ -14,6 +14,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../models/transaction.dart';
 import '../platform/android_save_downloads.dart';
+import 'spreadsheet_import.dart';
 
 /// MIME OOXML para que Gmail / Drive reconozcan el adjunto al compartir.
 const String _kXlsxMime =
@@ -32,8 +33,12 @@ class ExcelService {
     await _pickSaveOrShare(context, bytes, stem, subject: 'Exportación DolarSabio');
   }
 
+  /// Diagnóstico del último `importFromExcel` (se rellena aunque se devuelvan filas).
+  static String lastDiagnostics = '';
+
   // ── Importar ──────────────────────────────────────────────────────────────
   static Future<List<Map<String, dynamic>>?> importFromExcel() async {
+    lastDiagnostics = '';
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['xlsx', 'xls'],
@@ -41,48 +46,125 @@ class ExcelService {
 
     if (result == null || result.files.isEmpty) return null;
 
-    final bytes = result.files.first.bytes ??
-        await File(result.files.first.path!).readAsBytes();
+    final picked = result.files.first;
+    final bytes = picked.bytes ?? await File(picked.path!).readAsBytes();
 
-    final excel = Excel.decodeBytes(bytes);
-    final sheetName = excel.tables.keys.first;
-    final sheet = excel.tables[sheetName];
-    if (sheet == null || sheet.rows.isEmpty) return [];
-
-    // Primera fila = cabeceras
-    final headerRow = sheet.rows.first;
-    final headers = headerRow.map((c) => c?.value?.toString() ?? '').toList();
-
-    final transactions = <Map<String, dynamic>>[];
-
-    for (var rowIdx = 1; rowIdx < sheet.rows.length; rowIdx++) {
-      final row = sheet.rows[rowIdx];
-      final map = <String, dynamic>{};
-      for (var colIdx = 0; colIdx < headers.length; colIdx++) {
-        final header = headers[colIdx].toUpperCase();
-        final value = colIdx < row.length ? row[colIdx]?.value : null;
-        map[header] = value?.toString() ?? '';
-      }
-
-      // Mapeo flexible igual al original (acepta CODIGO, Codigo, codigo, etc.)
-      transactions.add({
-        'recordId': _pick(map, ['ID', 'RECORDID']),
-        'codigo': _pick(map, ['CODIGO']),
-        'cuenta': _pick(map, ['CUENTA']),
-        'descripcion': _pick(map, ['DESCRIPCION', 'DESCRIPCIÓN']),
-        'fecha': _pick(map, ['FECHA'],
-            fallback: DateTime.now().toIso8601String().split('T').first),
-        'debito': double.tryParse(_pick(map, ['DEBITO', 'DÉBITO'])) ?? 0.0,
-        'credito': double.tryParse(_pick(map, ['CREDITO', 'CRÉDITO'])) ?? 0.0,
-      });
+    final Excel excel;
+    try {
+      excel = Excel.decodeBytes(bytes);
+    } catch (e) {
+      lastDiagnostics = 'No se pudo abrir el archivo: $e';
+      return [];
     }
 
+    final allSheets = excel.tables.keys.toList();
+    final sheetName = _bestSheetName(excel);
+    final sheet = excel.tables[sheetName];
+    if (sheet == null) {
+      lastDiagnostics = 'Hoja «$sheetName» vacía. Hojas: ${allSheets.join(", ")}';
+      return [];
+    }
+
+    final maxRows = sheet.maxRows;
+    final maxCols = sheet.maxColumns;
+    if (maxRows < 2 || maxCols < 1) {
+      lastDiagnostics =
+          'Hoja «$sheetName» con $maxRows filas × $maxCols columnas. Hojas: ${allSheets.join(", ")}';
+      return [];
+    }
+
+    final headers = <String>[];
+    for (var col = 0; col < maxCols; col++) {
+      final c = sheet.cell(
+        CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 0),
+      );
+      headers.add(_cellToString(c));
+    }
+
+    if (headers.every((h) => normalizeImportHeaderKey(h).isEmpty)) {
+      lastDiagnostics = 'Cabeceras vacías en hoja «$sheetName».';
+      return [];
+    }
+
+    final transactions = <Map<String, dynamic>>[];
+    var dropped = 0;
+    for (var rowIdx = 1; rowIdx < maxRows; rowIdx++) {
+      final values = <String>[];
+      for (var col = 0; col < maxCols; col++) {
+        final c = sheet.cell(
+          CellIndex.indexByColumnRow(columnIndex: col, rowIndex: rowIdx),
+        );
+        values.add(_cellToString(c));
+      }
+      final normMap = buildNormalizedHeaderMap(headers, values);
+      final payload = buildImportPayload(normMap, values);
+      if (importRowLooksEmpty(payload)) {
+        dropped++;
+        continue;
+      }
+      transactions.add(payload);
+    }
+
+    lastDiagnostics = transactions.isEmpty
+        ? 'Hoja «$sheetName»: 0 filas válidas, $dropped descartadas '
+            '(maxRows=$maxRows, cols=${headers.length}).'
+        : '';
     return transactions;
   }
 
+  /// Elige la hoja con **más filas** (donde suelen estar los datos) y desempata por nombre conocido.
+  ///
+  /// Antes se priorizaba siempre «Transacciones» aunque tuviera solo la cabecera; Excel a veces deja
+  /// ahí una hoja vacía y mueve los datos a otra pestaña.
+  static String _bestSheetName(Excel excel) {
+    final keys = excel.tables.keys.toList();
+    if (keys.isEmpty) return 'Sheet1';
+
+    int rank(String name) {
+      final lower = name.toLowerCase();
+      if (lower == 'transacciones') return 0;
+      if (lower == 'plantilla') return 1;
+      if (lower == 'hoja1' || lower == 'sheet1') return 2;
+      return 10;
+    }
+
+    keys.sort((a, b) {
+      final sa = excel.tables[a]?.rows.length ?? 0;
+      final sb = excel.tables[b]?.rows.length ?? 0;
+      if (sa != sb) return sb.compareTo(sa);
+      return rank(a).compareTo(rank(b));
+    });
+    return keys.first;
+  }
+
+  static String _cellToString(Data? c) {
+    if (c == null) return '';
+    final Object? val = c.value;
+    if (val == null) return '';
+    if (val is String) return val.trim();
+    if (val is int) return val.toString();
+    if (val is double) {
+      final d = val;
+      if (d == d.roundToDouble()) return d.toInt().toString();
+      return d.toString();
+    }
+    if (val is DateTime) {
+      return val.toIso8601String().split('T').first;
+    }
+    if (val is bool) {
+      return val ? '1' : '0';
+    }
+    return val.toString().trim();
+  }
+
   // ── Plantilla ──────────────────────────────────────────────────────────────
-  static Future<void> downloadTemplate(BuildContext context) async {
-    final bytes = _encodeWorkbook(_buildTemplateWorkbook());
+  /// [labels] = `provider.columnLabels`, para respetar los nombres de columna
+  /// que el usuario haya renombrado en la app.
+  static Future<void> downloadTemplate(
+    BuildContext context,
+    Map<String, String> labels,
+  ) async {
+    final bytes = _encodeWorkbook(_buildTemplateWorkbook(labels));
     if (bytes == null) return;
     await _pickSaveOrShare(
       context,
@@ -152,45 +234,58 @@ class ExcelService {
     return excel;
   }
 
-  static Excel _buildTemplateWorkbook() {
+  /// Plantilla con cabeceras según [labels] y 2 filas de ejemplo, manteniendo
+  /// el mismo formato que la exportación real (montos como número, no texto)
+  /// para que el import por `_bestSheetName` / `buildImportPayload` la reconozca.
+  static Excel _buildTemplateWorkbook(Map<String, String> labels) {
     final excel = Excel.createExcel();
     final sheet = excel['Plantilla'];
     excel.delete('Sheet1');
 
-    const headers = [
-      'ID',
-      'CODIGO',
-      'CUENTA',
-      'DESCRIPCION',
-      'FECHA',
-      'DEBITO',
-      'CREDITO'
-    ];
-    const example = [
-      '1',
-      '110505',
-      'Caja General',
-      'Apertura de caja',
-      '2024-05-11',
-      '0',
-      '1000'
+    final headers = [
+      labels['recordId'] ?? 'ID',
+      labels['codigo'] ?? 'CODIGO',
+      labels['cuenta'] ?? 'CUENTA',
+      labels['descripcion'] ?? 'DESCRIPCION',
+      labels['fecha'] ?? 'FECHA',
+      labels['debito'] ?? 'DEBITO',
+      labels['credito'] ?? 'CREDITO',
     ];
 
-    final hStyle = CellStyle(
+    final today = DateTime.now().toIso8601String().split('T').first;
+    final examples = <List<Object>>[
+      ['1', '110505', 'Caja General',  'Apertura de caja', today, 0.0, 1000.0],
+      ['2', '410505', 'Comercio al por mayor', 'Venta de mercancía', today, 0.0, 500.0],
+    ];
+
+    final headerStyle = CellStyle(
       backgroundColorHex: ExcelColor.fromHexString('#14532D'),
       fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
       bold: true,
+      horizontalAlign: HorizontalAlign.Center,
     );
 
     for (var i = 0; i < headers.length; i++) {
-      final cell =
-          sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
+      final cell = sheet.cell(
+        CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0),
+      );
       cell.value = TextCellValue(headers[i]);
-      cell.cellStyle = hStyle;
+      cell.cellStyle = headerStyle;
+    }
 
-      final dataCell =
-          sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 1));
-      dataCell.value = TextCellValue(example[i]);
+    for (var row = 0; row < examples.length; row++) {
+      final rowData = examples[row];
+      for (var col = 0; col < rowData.length; col++) {
+        final cell = sheet.cell(
+          CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row + 1),
+        );
+        final value = rowData[col];
+        if (value is num) {
+          cell.value = DoubleCellValue(value.toDouble());
+        } else {
+          cell.value = TextCellValue(value.toString());
+        }
+      }
     }
     return excel;
   }
@@ -319,26 +414,30 @@ class ExcelService {
 
     await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF1E1E2E),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (ctx) => SafeArea(
+      builder: (ctx) {
+        final scheme = Theme.of(ctx).colorScheme;
+        final onS = scheme.onSurface;
+        final muted = onS.withValues(alpha: 0.65);
+        return SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.save_alt_rounded, color: Colors.white70),
-              title: const Text(
+              leading: Icon(Icons.save_alt_rounded, color: muted),
+              title: Text(
                 'Guardar archivo',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: onS,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              subtitle: const Text(
+              subtitle: Text(
                 'Archivo .xlsx (Excel). En el nombre del sistema, deja la extensión .xlsx.',
-                style: TextStyle(color: Colors.white54, fontSize: 12),
+                style: TextStyle(color: muted, fontSize: 12),
               ),
               onTap: () async {
                 Navigator.pop(ctx);
@@ -372,19 +471,19 @@ class ExcelService {
                 }
               },
             ),
-            const Divider(height: 1, color: Colors.white12),
+            Divider(height: 1, color: scheme.outline.withValues(alpha: 0.35)),
             ListTile(
-              leading: const Icon(Icons.share_rounded, color: Colors.white70),
-              title: const Text(
+              leading: Icon(Icons.share_rounded, color: muted),
+              title: Text(
                 'Compartir',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: onS,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              subtitle: const Text(
+              subtitle: Text(
                 'Gmail, WhatsApp, otra app…',
-                style: TextStyle(color: Colors.white54, fontSize: 12),
+                style: TextStyle(color: muted, fontSize: 12),
               ),
               onTap: () async {
                 Navigator.pop(ctx);
@@ -402,17 +501,9 @@ class ExcelService {
             const SizedBox(height: 8),
           ],
         ),
-      ),
+      );
+      },
     );
   }
 
-  static String _pick(Map<String, dynamic> map, List<String> keys,
-      {String fallback = ''}) {
-    for (final key in keys) {
-      if (map.containsKey(key) && (map[key] as String).isNotEmpty) {
-        return map[key] as String;
-      }
-    }
-    return fallback;
-  }
 }

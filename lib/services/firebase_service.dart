@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../models/transaction.dart' as my_models;
+import 'account_history_service.dart';
 
 class FirebaseService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -25,7 +26,11 @@ class FirebaseService {
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-      return await _auth.signInWithCredential(credential);
+      final uc = await _auth.signInWithCredential(credential);
+      if (uc.user != null) {
+        await AccountHistoryService.touchUser(uc.user!);
+      }
+      return uc;
     } catch (e) {
       rethrow;
     }

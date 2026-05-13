@@ -8,6 +8,13 @@ import '../models/transaction.dart';
 import '../utils/app_provider.dart';
 import '../utils/theme.dart';
 
+/// Barra bajo BALANCE: balance respecto al mayor de los dos totales (0–100 %).
+double _balanceCapitalProgress(FinancialSummary s) {
+  final hi = s.totalIncomes > s.totalExpenses ? s.totalIncomes : s.totalExpenses;
+  if (hi <= 0) return 0;
+  return (s.balance / hi).clamp(0, 1);
+}
+
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
@@ -16,6 +23,7 @@ class DashboardScreen extends StatelessWidget {
     final provider = context.watch<AppProvider>();
     final summary = provider.summary;
     final fmt = NumberFormat('#,##0.00', 'en_US');
+    final onCard = context.appOnSurface;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -31,10 +39,8 @@ class DashboardScreen extends StatelessWidget {
                   Expanded(child: _MetricCard(
                     label: 'BALANCE CAPITAL',
                     value: '\$${fmt.format(summary.balance)}',
-                    valueColor: Colors.white,
-                    progress: summary.totalIncomes > 0
-                        ? (summary.balance / summary.totalIncomes).clamp(0, 1)
-                        : 0,
+                    valueColor: onCard,
+                    progress: _balanceCapitalProgress(summary),
                   )),
                   const SizedBox(width: 12),
                   Expanded(child: _MetricCard(
@@ -55,27 +61,40 @@ class DashboardScreen extends StatelessWidget {
                 ],
               );
             }
-            return Column(children: [
-              _MetricCard(
-                label: 'BALANCE CAPITAL',
-                value: '\$${fmt.format(summary.balance)}',
-                valueColor: Colors.white,
-              ),
-              const SizedBox(height: 12),
-              Row(children: [
-                Expanded(child: _MetricCard(
-                  label: 'CRÉDITOS',
-                  value: '\$${fmt.format(summary.totalIncomes)}',
-                  valueColor: AppTheme.accentRed,
-                )),
-                const SizedBox(width: 12),
-                Expanded(child: _MetricCard(
-                  label: 'DÉBITOS',
-                  value: '\$${fmt.format(summary.totalExpenses)}',
-                  valueColor: AppTheme.accentPrimary,
-                )),
-              ]),
-            ]);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _MetricCard(
+                  label: 'BALANCE CAPITAL',
+                  value: '\$${fmt.format(summary.balance)}',
+                  valueColor: onCard,
+                  progress: _balanceCapitalProgress(summary),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _MetricCard(
+                        label: 'CRÉDITOS',
+                        value: '\$${fmt.format(summary.totalIncomes)}',
+                        valueColor: AppTheme.accentRed,
+                        dense: true,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _MetricCard(
+                        label: 'DÉBITOS',
+                        value: '\$${fmt.format(summary.totalExpenses)}',
+                        valueColor: AppTheme.accentPrimary,
+                        dense: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
           }),
 
           const SizedBox(height: 16),
@@ -87,11 +106,8 @@ class DashboardScreen extends StatelessWidget {
 
           // ── Actividad reciente ────────────────────────────────────────
           _RecentActivity(
-            transactions: provider.filteredTransactions,
+            transactions: provider.transactions,
             onEdit: (t) => _showEditSheet(context, t),
-            onDelete: (id) => provider.deleteTransaction(id),
-            filterType: provider.filterType,
-            onFilterChanged: provider.setFilter,
           ),
         ],
       ),
@@ -117,6 +133,8 @@ class _MetricCard extends StatelessWidget {
   final String? subtitle;
   final Color? subtitleColor;
   final double? progress;
+  /// Tarjetas más compactas (p. ej. fila CRÉDITOS / DÉBITOS en móvil).
+  final bool dense;
 
   const _MetricCard({
     required this.label,
@@ -125,50 +143,70 @@ class _MetricCard extends StatelessWidget {
     this.subtitle,
     this.subtitleColor,
     this.progress,
+    this.dense = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: AppTheme.cardDecoration(),
+    final pad = dense ? 12.0 : 20.0;
+    final gapLabel = dense ? 8.0 : 10.0;
+    final valueSize = dense ? 15.0 : 22.0;
+    final gapProg = dense ? 7.0 : 12.0;
+    final progMinH = dense ? 3.5 : 4.0;
+    final progRadius =
+        dense ? BorderRadius.zero : BorderRadius.circular(4);
+
+    final inner = Padding(
+      padding: EdgeInsets.all(pad),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: AppTheme.labelStyle),
-          const SizedBox(height: 10),
+          Text(
+            label,
+            style: dense
+                ? context.appLabelStyle.copyWith(
+                    fontSize: 8.5,
+                    letterSpacing: 1.15,
+                  )
+                : context.appLabelStyle,
+            maxLines: dense ? 2 : 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          SizedBox(height: gapLabel),
           Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: valueColor,
-              fontSize: 22,
+              fontSize: valueSize,
               fontWeight: FontWeight.w800,
               fontFamily: 'RobotoMono',
               letterSpacing: -0.5,
             ),
           ),
           if (progress != null) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: gapProg),
             Row(children: [
               Expanded(
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: progRadius,
                   child: LinearProgressIndicator(
                     value: progress,
-                    backgroundColor: AppTheme.darkBorder,
-                    valueColor: const AlwaysStoppedAnimation(AppTheme.accentPrimary),
-                    minHeight: 4,
+                    backgroundColor: context.appBorder,
+                    valueColor:
+                        const AlwaysStoppedAnimation(AppTheme.accentPrimary),
+                    minHeight: progMinH,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: dense ? 5 : 8),
               Text(
                 '${((progress ?? 0) * 100).toStringAsFixed(0)}%',
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppTheme.accentPrimary,
-                  fontSize: 10,
+                  fontSize: dense ? 9 : 10,
                   fontFamily: 'RobotoMono',
                 ),
               ),
@@ -179,7 +217,7 @@ class _MetricCard extends StatelessWidget {
             Text(
               subtitle!,
               style: TextStyle(
-                color: subtitleColor ?? AppTheme.darkMuted,
+                color: subtitleColor ?? context.appMuted,
                 fontSize: 9,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.5,
@@ -188,6 +226,14 @@ class _MetricCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+
+    final content =
+        dense ? Align(alignment: Alignment.topLeft, child: inner) : inner;
+
+    return Container(
+      decoration: context.appCardDecoration(),
+      child: content,
     );
   }
 }
@@ -203,15 +249,15 @@ class _FlowChart extends StatelessWidget {
     return Container(
       height: 240,
       padding: const EdgeInsets.all(16),
-      decoration: AppTheme.cardDecoration(),
+      decoration: context.appCardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('ANÁLISIS DE FLUJO', style: AppTheme.labelStyle),
+          Text('ANÁLISIS DE FLUJO', style: context.appLabelStyle),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Comparativa Crédito vs Débito',
-            style: TextStyle(color: AppTheme.darkMuted, fontSize: 10),
+            style: TextStyle(color: context.appMuted, fontSize: 10),
           ),
           const SizedBox(height: 16),
           Expanded(
@@ -260,8 +306,8 @@ class _FlowChart extends StatelessWidget {
                           padding: const EdgeInsets.only(top: 6),
                           child: Text(
                             labels[value.toInt()],
-                            style: const TextStyle(
-                              color: AppTheme.darkMuted,
+                            style: TextStyle(
+                              color: context.appMuted,
                               fontSize: 9,
                               fontWeight: FontWeight.w700,
                             ),
@@ -274,15 +320,15 @@ class _FlowChart extends StatelessWidget {
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  getDrawingHorizontalLine: (_) => const FlLine(
-                    color: AppTheme.darkBorder,
+                  getDrawingHorizontalLine: (_) => FlLine(
+                    color: context.appBorder,
                     strokeWidth: 1,
                   ),
                 ),
                 borderData: FlBorderData(show: false),
                 barTouchData: BarTouchData(
                   touchTooltipData: BarTouchTooltipData(
-                    getTooltipColor: (_) => AppTheme.darkCard,
+                    getTooltipColor: (_) => context.appCard,
                     tooltipRoundedRadius: 8,
                   ),
                 ),
@@ -299,16 +345,10 @@ class _FlowChart extends StatelessWidget {
 class _RecentActivity extends StatelessWidget {
   final List<Transaction> transactions;
   final void Function(Transaction) onEdit;
-  final void Function(String) onDelete;
-  final String filterType;
-  final void Function(String) onFilterChanged;
 
   const _RecentActivity({
     required this.transactions,
     required this.onEdit,
-    required this.onDelete,
-    required this.filterType,
-    required this.onFilterChanged,
   });
 
   @override
@@ -321,68 +361,41 @@ class _RecentActivity extends StatelessWidget {
       });
 
     return Container(
-      decoration: AppTheme.cardDecoration(),
+      decoration: context.appCardDecoration(),
       child: Column(
         children: [
-          // Header con filtros
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Row(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('ACTIVIDAD RECIENTE',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.5)),
-                      Text('Nodos activos del sistema',
-                          style: TextStyle(
-                              color: AppTheme.darkMuted, fontSize: 10)),
-                    ],
+                Text(
+                  'ACTIVIDAD RECIENTE',
+                  style: TextStyle(
+                    color: context.appOnSurface,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.5,
                   ),
                 ),
-                Flexible(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _FilterChip(
-                          label: 'Todo',
-                          selected: filterType == 'all',
-                          onTap: () => onFilterChanged('all'),
-                        ),
-                        const SizedBox(width: 4),
-                        _FilterChip(
-                          label: 'Créditos',
-                          selected: filterType == 'income',
-                          onTap: () => onFilterChanged('income'),
-                        ),
-                        const SizedBox(width: 4),
-                        _FilterChip(
-                          label: 'Débitos',
-                          selected: filterType == 'expense',
-                          onTap: () => onFilterChanged('expense'),
-                        ),
-                      ],
-                    ),
-                  ),
+                SizedBox(height: 4),
+                Text(
+                  'Nodos activos del sistema',
+                  style: TextStyle(color: context.appMuted, fontSize: 10),
                 ),
               ],
             ),
           ),
-          const Divider(color: AppTheme.darkBorder, height: 1),
+          Divider(color: context.appBorder, height: 1),
 
           if (sorted.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 40),
-              child: Text('Sin registros',
-                  style: TextStyle(color: AppTheme.darkMuted)),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40),
+              child: Text(
+                'Sin registros',
+                style: TextStyle(color: context.appMuted),
+                textAlign: TextAlign.center,
+              ),
             )
           else
             ListView.separated(
@@ -390,7 +403,7 @@ class _RecentActivity extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               itemCount: sorted.take(20).length,
               separatorBuilder: (_, __) =>
-                  const Divider(color: AppTheme.darkBorder, height: 1),
+                  Divider(color: context.appBorder, height: 1),
               itemBuilder: (_, i) {
                 final t = sorted[i];
                 final date = DateTime.tryParse(t.fecha);
@@ -401,14 +414,14 @@ class _RecentActivity extends StatelessWidget {
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   title: Text(t.descripcion,
-                      style: const TextStyle(
-                          color: Colors.white,
+                      style: TextStyle(
+                          color: context.appOnSurface,
                           fontWeight: FontWeight.w600,
                           fontSize: 13)),
                   subtitle: Text(
                     '${t.recordId.isNotEmpty ? t.recordId : 'N/A'} • $dateStr',
-                    style: const TextStyle(
-                        color: AppTheme.darkMuted,
+                    style: TextStyle(
+                        color: context.appMuted,
                         fontSize: 10,
                         fontFamily: 'RobotoMono'),
                   ),
@@ -437,38 +450,6 @@ class _RecentActivity extends StatelessWidget {
               },
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _FilterChip(
-      {required this.label, required this.selected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: selected ? AppTheme.accentPrimary : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? AppTheme.darkBg : AppTheme.darkMuted,
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1,
-          ),
-        ),
       ),
     );
   }
@@ -517,25 +498,25 @@ class _EditSheetState extends State<_EditSheet> {
         top: 24,
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
       ),
-      decoration: const BoxDecoration(
-        color: AppTheme.darkSurface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         border:
-            Border(top: BorderSide(color: AppTheme.darkBorder)),
+            Border(top: BorderSide(color: context.appBorder)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Editar Registro',
+          Text('Editar Registro',
               style: TextStyle(
-                  color: Colors.white,
+                  color: context.appOnSurface,
                   fontSize: 18,
                   fontWeight: FontWeight.w700)),
           const SizedBox(height: 20),
           TextField(
             controller: _descCtrl,
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: context.appOnSurface),
             decoration: const InputDecoration(labelText: 'DESCRIPCIÓN'),
           ),
           const SizedBox(height: 12),

@@ -268,26 +268,30 @@ class PdfService {
 
     await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF1E1E2E),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (ctx) => SafeArea(
+      builder: (ctx) {
+        final scheme = Theme.of(ctx).colorScheme;
+        final onS = scheme.onSurface;
+        final muted = onS.withValues(alpha: 0.65);
+        return SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.save_alt_rounded, color: Colors.white70),
-              title: const Text(
+              leading: Icon(Icons.save_alt_rounded, color: muted),
+              title: Text(
                 'Guardar archivo',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: onS,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              subtitle: const Text(
+              subtitle: Text(
                 'Archivo .pdf. Deja la extensión .pdf en el diálogo del sistema.',
-                style: TextStyle(color: Colors.white54, fontSize: 12),
+                style: TextStyle(color: muted, fontSize: 12),
               ),
               onTap: () async {
                 Navigator.pop(ctx);
@@ -319,19 +323,19 @@ class PdfService {
                 }
               },
             ),
-            const Divider(height: 1, color: Colors.white12),
+            Divider(height: 1, color: scheme.outline.withValues(alpha: 0.35)),
             ListTile(
-              leading: const Icon(Icons.share_rounded, color: Colors.white70),
-              title: const Text(
+              leading: Icon(Icons.share_rounded, color: muted),
+              title: Text(
                 'Compartir',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: onS,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              subtitle: const Text(
+              subtitle: Text(
                 'Gmail, Drive, WhatsApp…',
-                style: TextStyle(color: Colors.white54, fontSize: 12),
+                style: TextStyle(color: muted, fontSize: 12),
               ),
               onTap: () async {
                 Navigator.pop(ctx);
@@ -349,7 +353,8 @@ class PdfService {
             const SizedBox(height: 8),
           ],
         ),
-      ),
+      );
+      },
     );
   }
 

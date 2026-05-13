@@ -38,16 +38,44 @@ dependencies:
 
   # Estado y utilidades
   provider: ^6.1.2
-  shared_preferences: ^2.3.2
+  shared_preferences: ^2.3.3
   intl: ^0.19.0
   uuid: ^4.4.2
   file_saver: ^0.3.1
   path: ^1.9.1
+  flutter_local_notifications: ^20.1.0
+  timezone: ^0.10.1
+  flutter_timezone: ^5.0.2
+  csv: ^6.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
+  assets:
+    - PLAN ÚNICO DE CUENTAS (PUC) 2026 -.txt
+    - assets/images/DolarSabio.jpg
+
+# Icono del launcher: se genera con `dart run flutter_launcher_icons`.
+# Fuente: assets/icons/app_icon.png (1024x1024, generado desde DolarSabio.jpg).
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/icons/app_icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#009823"
+  adaptive_icon_foreground: "assets/icons/app_icon_foreground.png"
+  web:
+    generate: true
+    image_path: "assets/icons/app_icon.png"
+    background_color: "#009823"
+    theme_color: "#009823"
+  windows:
+    generate: true
+    image_path: "assets/icons/app_icon.png"
+    icon_size: 48

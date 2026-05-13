@@ -76,6 +76,9 @@ class Transaction {
   }
 }
 
+/// [totalIncomes] = Σ `credito` (tarjeta CRÉDITOS).
+/// [totalExpenses] = Σ `debito` (tarjeta DÉBITOS).
+/// [balance] = Σ débito − Σ crédito (capital / saldo neto en esta convención).
 class FinancialSummary {
   final double totalIncomes;
   final double totalExpenses;

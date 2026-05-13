@@ -1,0 +1,216 @@
+PLAN ÚNICO DE CUENTAS (PUC) 2026 - CÓDIGOS MÁS COMUNES
+Adaptado para comerciantes en Colombia
+
+==============================
+CLASE 1 - ACTIVO
+==============================
+11 Efectivo y equivalentes al efectivo
+1105 Caja
+1110 Bancos
+1115 Inversiones a corto plazo
+
+12 Inversiones
+1205 Inversiones en acciones
+1210 Inversiones en títulos de renta fija
+
+13 Cuentas por cobrar
+1305 Clientes
+1310 Cuentas corrientes comerciales
+1315 Anticipos y avances
+1320 Impuestos por cobrar
+1325 Anticipo de impuestos y contribuciones
+1330 Cuentas por cobrar a trabajadores
+1335 Deudores varios
+
+14 Inventarios
+1405 Mercancías no fabricadas por la empresa
+1410 Materias primas
+1415 Productos en proceso
+1420 Productos terminados
+1425 Materiales, repuestos y accesorios
+1430 Envases y empaques
+
+15 Propiedades, planta y equipo
+1505 Terrenos
+1510 Construcciones y edificaciones
+1515 Maquinaria y equipo
+1520 Equipo de oficina
+1522 Equipo de cómputo y comunicación
+1525 Flota y equipo de transporte
+1530 Equipo de hotelería y restaurante
+1592 Depreciación acumulada
+
+16 Intangibles
+1605 Crédito mercantil
+1610 Patentes, marcas y derechos de autor
+1615 Programas de computador
+1692 Amortización acumulada
+
+17 Otros activos
+1705 Gastos pagados por anticipado
+1710 Cargos diferidos
+1715 Bienes y servicios pagados por anticipado
+
+==============================
+CLASE 2 - PASIVO
+==============================
+21 Obligaciones financieras
+2105 Bancos nacionales
+2110 Obligaciones con entidades del exterior
+2115 Obligaciones a corto plazo
+2120 Obligaciones a largo plazo
+
+22 Proveedores
+2205 Proveedores nacionales
+2210 Proveedores del exterior
+2215 Anticipos a proveedores
+
+23 Cuentas por pagar
+2305 Costos y gastos por pagar
+2310 Acreedores comerciales
+2315 Retenciones y aportes de nómina
+2320 Impuestos, gravámenes y tasas
+2325 Dividendos por pagar
+2330 Cuentas corrientes comerciales
+
+24 Impuestos, gravámenes y tasas
+2405 Impuesto sobre la renta y complementarios
+2410 Impuesto a las ventas por pagar
+2415 Impuesto de industria y comercio
+2420 Retenciones en la fuente por pagar
+
+25 Obligaciones laborales
+2505 Salarios por pagar
+2510 Cesantías
+2515 Intereses sobre cesantías
+2520 Prima de servicios
+2525 Vacaciones
+
+26 Pasivos estimados y provisiones
+2605 Provisión para obligaciones laborales
+2610 Provisión para contingencias
+
+==============================
+CLASE 3 - PATRIMONIO
+==============================
+31 Capital social
+3105 Capital suscrito y pagado
+3110 Capital por suscribir
+
+32 Superávit de capital
+3205 Prima en colocación de acciones
+3210 Donaciones
+
+33 Reservas
+3305 Reserva legal
+3310 Reservas estatutarias
+3315 Reservas ocasionales
+
+34 Revalorización del patrimonio
+3405 Revalorización de propiedades, planta y equipo
+
+35 Resultados del ejercicio
+3505 Utilidad del ejercicio
+3510 Pérdida del ejercicio
+
+36 Resultados de ejercicios anteriores
+3605 Utilidades acumuladas
+3610 Pérdidas acumuladas
+
+==============================
+CLASE 4 - INGRESOS
+==============================
+41 Ingresos de actividades ordinarias
+4105 Venta de mercancías
+4110 Venta de productos fabricados
+4115 Prestación de servicios
+
+42 Otros ingresos
+4205 Rendimientos financieros
+4210 Utilidad en venta de activos
+4215 Ingresos por descuentos comerciales
+4220 Ingresos diversos
+
+43 Ingresos no operacionales
+4305 Indemnizaciones
+4310 Recuperaciones
+
+==============================
+CLASE 5 - GASTOS
+==============================
+51 Gastos de administración
+5105 Gastos de personal
+5110 Honorarios
+5115 Impuestos y tasas
+5120 Arrendamientos
+5121 Contribuciones y afiliaciones
+5122 Seguros
+5123 Servicios públicos
+5124 Gastos de viajes
+5125 Depreciaciones
+5126 Amortizaciones
+5130 Diversos
+
+52 Gastos de ventas
+5205 Gastos de personal
+5210 Publicidad y propaganda
+5215 Arrendamientos
+5220 Servicios públicos
+5221 Transportes y fletes
+5230 Diversos
+
+53 Gastos financieros
+5305 Intereses
+5310 Comisiones
+5315 Descuentos comerciales
+5320 Diferencia en cambio
+
+54 Otros gastos
+5405 Pérdida en venta de activos
+5410 Gastos diversos
+
+55 Impuesto de renta y complementarios
+5505 Impuesto sobre la renta corriente
+
+==============================
+CLASE 6 - COSTOS DE VENTA
+==============================
+61 Costo de ventas
+6105 Mercancías vendidas
+6110 Productos vendidos
+6115 Costo de servicios prestados
+
+==============================
+CLASE 7 - COSTOS DE PRODUCCIÓN U OPERACIÓN
+==============================
+71 Costos de producción
+7105 Materias primas consumidas
+7110 Mano de obra directa
+7115 Costos indirectos de fabricación
+
+72 Costos de operación
+7205 Materiales y suministros
+7210 Mano de obra
+7215 Servicios contratados
+
+==============================
+CLASE 8 - CUENTAS DE ORDEN DEUDORAS
+==============================
+81 Derechos contingentes
+8105 Garantías recibidas
+8110 Bienes en custodia
+
+82 Deudoras de control
+8205 Bienes totalmente depreciados
+8210 Documentos entregados en garantía
+
+==============================
+CLASE 9 - CUENTAS DE ORDEN ACREEDORAS
+==============================
+91 Responsabilidades contingentes
+9105 Garantías otorgadas
+9110 Avales otorgados
+
+92 Acreedoras de control
+9205 Bienes recibidos en arrendamiento
+9210 Deudas contingentes

@@ -4,8 +4,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/transaction.dart';
+import '../services/puc_catalog.dart';
 import '../utils/app_provider.dart';
 import '../utils/theme.dart';
+import '../widgets/puc_explanation_sheet.dart';
+import 'puc_guide_screen.dart';
 
 /// Mismo formulario que el botón «AÑADIR NODO OPERATIVO» en la hoja (p. ej. desde el drawer).
 void showAddTransactionSheet(BuildContext context) {
@@ -19,9 +22,9 @@ void showAddTransactionSheet(BuildContext context) {
 
 /// Anchos de las 8 columnas (ID … STATUS). El scroll horizontal debe usar **la misma suma**.
 const List<double> _kSpreadsheetColWidths = [
-  90, 110, 130, 200, 120, 110, 110, 80,
+  90, 130, 130, 200, 120, 110, 110, 80,
 ];
-const double _kSpreadsheetTableWidth = 950;
+const double _kSpreadsheetTableWidth = 970;
 
 class SpreadsheetScreen extends StatefulWidget {
   const SpreadsheetScreen({super.key});
@@ -31,21 +34,57 @@ class SpreadsheetScreen extends StatefulWidget {
 }
 
 class _SpreadsheetScreenState extends State<SpreadsheetScreen> {
+  final TextEditingController _searchCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  static bool _rowMatchesQuery(Transaction t, String query) {
+    final raw = query.trim().toLowerCase();
+    if (raw.isEmpty) return true;
+    final hay = [
+      t.recordId,
+      t.codigo,
+      t.cuenta,
+      t.descripcion,
+      t.fecha,
+      t.debito.toString(),
+      t.credito.toString(),
+    ].join('\n').toLowerCase();
+    for (final token in raw.split(RegExp(r'\s+'))) {
+      if (token.isEmpty) continue;
+      if (!hay.contains(token)) return false;
+    }
+    return true;
+  }
+
+  List<Transaction> _visibleRows(AppProvider provider) {
+    final all = provider.sortedByDate;
+    final q = _searchCtrl.text;
+    if (q.trim().isEmpty) return all;
+    return all.where((t) => _rowMatchesQuery(t, q)).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final labels = provider.columnLabels;
+    final visible = _visibleRows(provider);
+    final total = provider.sortedByDate.length;
 
     return Container(
       margin: const EdgeInsets.all(16),
-      decoration: AppTheme.cardDecoration(),
+      decoration: context.appCardDecoration(),
       child: Column(
         children: [
           // ── Header ────────────────────────────────────────────────────
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppTheme.darkBorder)),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: context.appBorder)),
             ),
             child: Row(
               children: [
@@ -53,9 +92,8 @@ class _SpreadsheetScreenState extends State<SpreadsheetScreen> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: AppTheme.darkBg,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppTheme.darkBorder),
+                    color: context.appBackground,
+                    border: Border.all(color: context.appBorder),
                   ),
                   child: const Icon(Icons.table_chart_rounded,
                       color: AppTheme.accentPrimary, size: 20),
@@ -69,8 +107,8 @@ class _SpreadsheetScreenState extends State<SpreadsheetScreen> {
                         'JOURNAL DETALLADO',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            color: Colors.white,
+                        style: TextStyle(
+                            color: context.appOnSurface,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1.5),
@@ -79,14 +117,73 @@ class _SpreadsheetScreenState extends State<SpreadsheetScreen> {
                         'Edición sincronizada en tiempo real',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            color: AppTheme.darkMuted,
+                        style: TextStyle(
+                            color: context.appMuted,
                             fontSize: 10,
                             fontFamily: 'RobotoMono'),
                       ),
                     ],
                   ),
                 ),
+                IconButton(
+                  tooltip: 'Guía PUC',
+                  icon: Icon(Icons.menu_book_rounded,
+                      color: context.appMuted, size: 22),
+                  onPressed: () {
+                    Navigator.of(context).push<void>(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const PucGuideScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          // ── Buscador ──────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: _searchCtrl,
+                  onChanged: (_) => setState(() {}),
+                  style: TextStyle(color: context.appOnSurface, fontSize: 13),
+                  textInputAction: TextInputAction.search,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText:
+                        'Buscar por ID, código, cuenta, descripción, fecha o montos…',
+                    hintMaxLines: 2,
+                    prefixIcon: Icon(Icons.search_rounded,
+                        color: context.appMuted, size: 22),
+                    suffixIcon: _searchCtrl.text.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Limpiar',
+                            icon: Icon(Icons.close_rounded,
+                                color: context.appMuted, size: 20),
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              setState(() {});
+                            },
+                          ),
+                  ),
+                ),
+                if (_searchCtrl.text.trim().isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6, left: 4),
+                    child: Text(
+                      '${visible.length} de $total filas',
+                      style: TextStyle(
+                        color: context.appMuted,
+                        fontSize: 11,
+                        fontFamily: 'RobotoMono',
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -100,24 +197,19 @@ class _SpreadsheetScreenState extends State<SpreadsheetScreen> {
                 child: Column(
                   children: [
                     // Fila de cabeceras
-                    Container(
-                      color: AppTheme.darkBg,
-                      child: _buildHeaderRow(labels, provider),
-                    ),
+                    _buildHeaderRow(context, labels, provider),
                     // Filas de datos
                     Expanded(
-                      child: ListView.separated(
-                        itemCount: provider.sortedByDate.length + 1,
-                        separatorBuilder: (_, __) => const Divider(
-                            color: AppTheme.darkBorder, height: 1),
+                      child: ListView.builder(
+                        itemCount: visible.length + 1,
                         itemBuilder: (_, i) {
-                          if (i == provider.sortedByDate.length) {
+                          if (i == visible.length) {
                             return _AddRowButton(
                               onTap: () => _showAddModal(context),
                             );
                           }
                           return _TransactionRow(
-                            transaction: provider.sortedByDate[i],
+                            transaction: visible[i],
                             index: i,
                             onUpdate: (id, data) =>
                                 provider.updateTransactionField(id, data),
@@ -137,46 +229,39 @@ class _SpreadsheetScreenState extends State<SpreadsheetScreen> {
   }
 
   Widget _buildHeaderRow(
-      Map<String, String> labels, AppProvider provider) {
-    const widths = [90.0, 110.0, 130.0, 200.0, 120.0, 110.0, 110.0, 80.0];
+      BuildContext context, Map<String, String> labels, AppProvider provider) {
     final keys = [
       'recordId', 'codigo', 'cuenta', 'descripcion',
       'fecha', 'debito', 'credito',
     ];
 
-    return Row(
-      children: [
-        ...keys.asMap().entries.map((e) => SizedBox(
-              width: widths[e.key],
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                decoration: const BoxDecoration(
-                  border: Border(
-                    right: BorderSide(color: AppTheme.darkBorder),
-                    bottom: BorderSide(color: AppTheme.darkBorder),
+    return Container(
+      decoration: BoxDecoration(
+        color: context.appBackground,
+        border: Border(bottom: BorderSide(color: context.appBorder)),
+      ),
+      child: Row(
+        children: [
+          ...keys.asMap().entries.map((e) => SizedBox(
+                width: _kSpreadsheetColWidths[e.key],
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  child: _EditableHeader(
+                    label: labels[keys[e.key]] ?? keys[e.key].toUpperCase(),
+                    onRename: (val) => provider.renameColumn(keys[e.key], val),
                   ),
                 ),
-                child: _EditableHeader(
-                  label: labels[keys[e.key]] ?? keys[e.key].toUpperCase(),
-                  onRename: (val) => provider.renameColumn(keys[e.key], val),
-                ),
-              ),
-            )),
-        // Status column
-        SizedBox(
-          width: _kSpreadsheetColWidths[7],
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-            decoration: const BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: AppTheme.darkBorder),
-              ),
+              )),
+          SizedBox(
+            width: _kSpreadsheetColWidths[7],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              child: Text('STATUS', style: context.appLabelStyle),
             ),
-            child: Text('STATUS', style: AppTheme.labelStyle),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -224,7 +309,7 @@ class _EditableHeaderState extends State<_EditableHeader> {
       return TextField(
         controller: _ctrl,
         autofocus: true,
-        style: const TextStyle(color: Colors.white, fontSize: 9),
+        style: TextStyle(color: context.appOnSurface, fontSize: 9),
         decoration: const InputDecoration(
           isDense: true,
           contentPadding: EdgeInsets.zero,
@@ -243,7 +328,7 @@ class _EditableHeaderState extends State<_EditableHeader> {
     return GestureDetector(
       onTap: () => setState(() => _editing = true),
       child: Text(widget.label,
-          style: AppTheme.labelStyle,
+          style: context.appLabelStyle,
           overflow: TextOverflow.ellipsis),
     );
   }
@@ -266,7 +351,7 @@ class _TransactionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = transaction;
-    final bg = index.isEven ? Colors.transparent : AppTheme.darkCard;
+    final bg = index.isEven ? Colors.transparent : context.appCard;
 
     return Container(
       color: bg,
@@ -275,9 +360,45 @@ class _TransactionRow extends StatelessWidget {
           _InlineField(
               width: _kSpreadsheetColWidths[0], value: t.recordId,
               onSave: (v) => onUpdate(t.id!, {'recordId': v})),
-          _InlineField(
-              width: _kSpreadsheetColWidths[1], value: t.codigo, bold: true,
-              onSave: (v) => onUpdate(t.id!, {'codigo': v})),
+          SizedBox(
+            width: _kSpreadsheetColWidths[1],
+            child: Row(
+              children: [
+                Expanded(
+                  child: _InlineField(
+                    width: _kSpreadsheetColWidths[1] - 34,
+                    value: t.codigo,
+                    bold: true,
+                    onSave: (v) => onUpdate(t.id!, {'codigo': v}),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Explicación PUC',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
+                  icon: Icon(
+                    Icons.info_outline_rounded,
+                    size: 17,
+                    color: t.codigo.trim().isEmpty
+                        ? context.appMuted.withValues(alpha: 0.35)
+                        : context.appMuted,
+                  ),
+                  onPressed: t.codigo.trim().isEmpty
+                      ? null
+                      : () {
+                          showPucExplanationSheet(
+                            context,
+                            codigo: t.codigo.trim(),
+                            cuentaEnMovimiento: t.cuenta,
+                          );
+                        },
+                ),
+              ],
+            ),
+          ),
           _InlineField(
               width: _kSpreadsheetColWidths[2], value: t.cuenta,
               onSave: (v) => onUpdate(t.id!, {'cuenta': v})),
@@ -308,8 +429,8 @@ class _TransactionRow extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.delete_outline,
-                      color: AppTheme.darkMuted, size: 16),
+                  icon: Icon(Icons.delete_outline,
+                      color: context.appMuted, size: 16),
                   onPressed: () => onDelete(t.id!),
                   tooltip: 'Eliminar',
                 ),
@@ -321,8 +442,8 @@ class _TransactionRow extends StatelessWidget {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-color: AppTheme.accentPrimary.withValues(alpha: 0.5),
-                    blurRadius: 6,
+                        color: AppTheme.accentPrimary.withValues(alpha: 0.5),
+                        blurRadius: 6,
                       ),
                     ],
                   ),
@@ -386,33 +507,29 @@ class _InlineFieldState extends State<_InlineField> {
   Widget build(BuildContext context) {
     return SizedBox(
       width: widget.width,
-      child: Container(
-        decoration: const BoxDecoration(
-          border: Border(right: BorderSide(color: AppTheme.darkBorder)),
+      child: TextField(
+        controller: _ctrl,
+        textAlign: widget.textAlign,
+        style: TextStyle(
+          color: widget.textColor ?? context.appOnSurface,
+          fontSize: 11,
+          fontFamily: 'RobotoMono',
+          fontWeight: widget.bold ? FontWeight.w700 : FontWeight.w400,
+          fontStyle: widget.italic ? FontStyle.italic : FontStyle.normal,
         ),
-        child: TextField(
-          controller: _ctrl,
-          textAlign: widget.textAlign,
-          style: TextStyle(
-            color: widget.textColor ?? AppTheme.darkText,
-            fontSize: 11,
-            fontFamily: 'RobotoMono',
-            fontWeight: widget.bold ? FontWeight.w700 : FontWeight.w400,
-            fontStyle: widget.italic ? FontStyle.italic : FontStyle.normal,
-          ),
-          decoration: const InputDecoration(
-            isDense: true,
-            contentPadding:
-                EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-            border: InputBorder.none,
-            focusedBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: AppTheme.accentPrimary),
-              borderRadius: BorderRadius.zero,
-            ),
-          ),
-          onSubmitted: widget.onSave,
-          onTapOutside: (_) => widget.onSave(_ctrl.text),
+        decoration: const InputDecoration(
+          isDense: true,
+          contentPadding:
+              EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          errorBorder: InputBorder.none,
+          focusedErrorBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
         ),
+        onSubmitted: widget.onSave,
+        onTapOutside: (_) => widget.onSave(_ctrl.text),
       ),
     );
   }
@@ -432,7 +549,7 @@ class _AddRowButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.add, color: AppTheme.darkMuted, size: 16),
+            Icon(Icons.add, color: context.appMuted, size: 16),
             const SizedBox(width: 8),
             Flexible(
               child: Text(
@@ -440,8 +557,8 @@ class _AddRowButton extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: AppTheme.darkMuted,
+                style: TextStyle(
+                    color: context.appMuted,
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 2),
@@ -465,9 +582,6 @@ class _AddTransactionSheet extends StatefulWidget {
 class _AddTransactionSheetState extends State<_AddTransactionSheet> {
   final _formKey = GlobalKey<FormState>();
   final _ctrls = <String, TextEditingController>{
-    'recordId': TextEditingController(),
-    'codigo': TextEditingController(),
-    'cuenta': TextEditingController(),
     'descripcion': TextEditingController(),
     'fecha': TextEditingController(
         text: DateTime.now().toIso8601String().split('T').first),
@@ -475,7 +589,38 @@ class _AddTransactionSheetState extends State<_AddTransactionSheet> {
     'credito': TextEditingController(text: '0'),
   };
 
+  bool _pucLoading = true;
   bool _saving = false;
+  String? _codigo;
+  String? _cuenta;
+
+  @override
+  void initState() {
+    super.initState();
+    _ensurePuc();
+  }
+
+  Future<void> _ensurePuc() async {
+    await PucCatalog.ensureLoaded();
+    if (!mounted) return;
+    setState(() => _pucLoading = false);
+  }
+
+  void _syncCuentaTrasCodigo(String? nuevoCodigo) {
+    if (nuevoCodigo == null) {
+      _cuenta = null;
+      return;
+    }
+    final opts = PucCatalog.cuentasParaCodigo(nuevoCodigo);
+    if (opts.isEmpty) {
+      _cuenta = null;
+    } else if (opts.length == 1) {
+      _cuenta = opts.first;
+    } else {
+      _cuenta =
+          (_cuenta != null && opts.contains(_cuenta)) ? _cuenta : null;
+    }
+  }
 
   @override
   void dispose() {
@@ -502,11 +647,24 @@ class _AddTransactionSheetState extends State<_AddTransactionSheet> {
       return;
     }
 
+    final codigo = _codigo ?? '';
+    final cuenta = _cuenta ?? '';
+    if (codigo.isEmpty || cuenta.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Selecciona código y cuenta del PUC.'),
+          backgroundColor: AppTheme.accentRed,
+        ));
+      }
+      setState(() => _saving = false);
+      return;
+    }
+
     await provider.addTransaction(Transaction(
       userId: user,
-      recordId: _ctrls['recordId']!.text,
-      codigo: _ctrls['codigo']!.text,
-      cuenta: _ctrls['cuenta']!.text,
+      recordId: provider.nextRecordId().toString(),
+      codigo: codigo,
+      cuenta: cuenta,
       descripcion: _ctrls['descripcion']!.text.isEmpty
           ? 'Sin descripción'
           : _ctrls['descripcion']!.text,
@@ -522,16 +680,259 @@ class _AddTransactionSheetState extends State<_AddTransactionSheet> {
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
     final labels = provider.columnLabels;
+    final codigos = PucCatalog.codigosOrdenados;
+    final codigoValue =
+        _codigo != null && codigos.contains(_codigo) ? _codigo : null;
+    final cuentasOpts = codigoValue == null
+        ? const <String>[]
+        : PucCatalog.cuentasParaCodigo(codigoValue);
+    final cuentaValue =
+        _cuenta != null && cuentasOpts.contains(_cuenta) ? _cuenta : null;
+
+    Widget body;
+    if (_pucLoading) {
+      body = const Padding(
+        padding: EdgeInsets.symmetric(vertical: 48),
+        child: Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppTheme.accentPrimary,
+          ),
+        ),
+      );
+    } else if (PucCatalog.loadError != null || codigos.isEmpty) {
+      body = Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Text(
+          PucCatalog.loadError != null
+              ? 'No se pudo cargar el PUC. Revisa que el archivo esté en assets.'
+              : 'El catálogo PUC está vacío.',
+          style: const TextStyle(color: AppTheme.accentRed, fontSize: 13),
+        ),
+      );
+    } else {
+      body = Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: _ctrls['descripcion'],
+            style: TextStyle(color: context.appOnSurface),
+            validator: (v) =>
+                v == null || v.isEmpty ? 'Requerido' : null,
+            decoration: InputDecoration(
+                labelText: labels['descripcion'] ?? 'DESCRIPCIÓN'),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: labels['recordId'] ?? 'ID',
+                    helperText: 'Asignado automáticamente',
+                    helperMaxLines: 1,
+                  ),
+                  child: Text(
+                    '${provider.nextRecordId()}',
+                    style: TextStyle(
+                      color: context.appOnSurface,
+                      fontFamily: 'RobotoMono',
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  controller: _ctrls['fecha'],
+                  style: TextStyle(
+                      color: context.appOnSurface, fontFamily: 'RobotoMono'),
+                  decoration:
+                      InputDecoration(labelText: labels['fecha'] ?? 'FECHA'),
+                  readOnly: true,
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                      builder: (ctx, child) => Theme(
+                        data: Theme.of(context),
+                        child: child!,
+                      ),
+                    );
+                    if (picked != null) {
+                      _ctrls['fecha']!.text =
+                          picked.toIso8601String().split('T').first;
+                      setState(() {});
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  // ignore: deprecated_member_use
+                  value: codigoValue,
+                  menuMaxHeight: 360,
+                  dropdownColor: context.appSurface,
+                  style: TextStyle(
+                    color: context.appOnSurface,
+                    fontFamily: 'RobotoMono',
+                    fontSize: 14,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: labels['codigo'] ?? 'CÓDIGO',
+                  ),
+                  hint: Text('Seleccionar',
+                      style: TextStyle(color: context.appMuted)),
+                  items: codigos
+                      .map(
+                        (c) => DropdownMenuItem(
+                          value: c,
+                          child: Text(c, overflow: TextOverflow.ellipsis),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) {
+                    setState(() {
+                      _codigo = v;
+                      _syncCuentaTrasCodigo(v);
+                    });
+                  },
+                  validator: (v) =>
+                      v == null || v.isEmpty ? 'Elige un código' : null,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  // ignore: deprecated_member_use
+                  value: cuentaValue,
+                  menuMaxHeight: 360,
+                  dropdownColor: context.appSurface,
+                  style: TextStyle(color: context.appOnSurface, fontSize: 13),
+                  decoration: InputDecoration(
+                    labelText: labels['cuenta'] ?? 'CUENTA',
+                  ),
+                  hint: Text('Seleccionar',
+                      style: TextStyle(color: context.appMuted)),
+                  items: cuentasOpts
+                      .map(
+                        (n) => DropdownMenuItem(
+                          value: n,
+                          child: Text(
+                            n,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: cuentasOpts.isEmpty
+                      ? null
+                      : (v) => setState(() => _cuenta = v),
+                  validator: (v) =>
+                      v == null || v.isEmpty ? 'Elige la cuenta' : null,
+                ),
+              ),
+            ],
+          ),
+          if (codigoValue != null && codigoValue.isNotEmpty) ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () {
+                  final cta = cuentaValue ??
+                      (cuentasOpts.isNotEmpty ? cuentasOpts.first : '');
+                  showPucExplanationSheet(
+                    context,
+                    codigo: codigoValue,
+                    cuentaEnMovimiento: cta,
+                  );
+                },
+                icon: Icon(
+                  Icons.info_outline_rounded,
+                  size: 18,
+                  color: AppTheme.accentPrimary,
+                ),
+                label: Text(
+                  'Explicación PUC',
+                  style: TextStyle(
+                    color: AppTheme.accentPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+          ],
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(
+              child: TextFormField(
+                controller: _ctrls['debito'],
+                keyboardType: TextInputType.number,
+                style: const TextStyle(
+                    color: AppTheme.accentPrimary, fontFamily: 'RobotoMono'),
+                decoration:
+                    InputDecoration(labelText: labels['debito'] ?? 'DÉBITO'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextFormField(
+                controller: _ctrls['credito'],
+                keyboardType: TextInputType.number,
+                style: const TextStyle(
+                    color: AppTheme.accentRed, fontFamily: 'RobotoMono'),
+                decoration:
+                    InputDecoration(labelText: labels['credito'] ?? 'CRÉDITO'),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: _saving ? null : _save,
+              child: _saving
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Theme.of(context).colorScheme.onPrimary))
+                  : const Text('GUARDAR FILA'),
+            ),
+          ),
+        ],
+      );
+    }
 
     return Container(
       padding: EdgeInsets.only(
-        left: 24, right: 24, top: 24,
+        left: 24,
+        right: 24,
+        top: 24,
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
       ),
-      decoration: const BoxDecoration(
-        color: AppTheme.darkSurface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(top: BorderSide(color: AppTheme.darkBorder)),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(top: BorderSide(color: context.appBorder)),
       ),
       child: Form(
         key: _formKey,
@@ -542,115 +943,41 @@ class _AddTransactionSheetState extends State<_AddTransactionSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Nueva Fila Contable',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        fontStyle: FontStyle.italic)),
-                IconButton(
-                  icon: const Icon(Icons.close, color: AppTheme.darkMuted),
-                  onPressed: () => Navigator.pop(context),
+                Text(
+                  'Nueva Fila Contable',
+                  style: TextStyle(
+                      color: context.appOnSurface,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      fontStyle: FontStyle.italic),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!_pucLoading && codigos.isNotEmpty)
+                      IconButton(
+                        tooltip: 'Guía PUC',
+                        icon: Icon(Icons.menu_book_rounded,
+                            color: context.appMuted),
+                        onPressed: () {
+                          Navigator.of(context).push<void>(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const PucGuideScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    IconButton(
+                      icon: Icon(Icons.close,
+                          color: context.appMuted),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
                 ),
               ],
             ),
             const SizedBox(height: 16),
-
-            // Descripción (required)
-            TextFormField(
-              controller: _ctrls['descripcion'],
-              style: const TextStyle(color: Colors.white),
-              validator: (v) =>
-                  v == null || v.isEmpty ? 'Requerido' : null,
-              decoration: InputDecoration(
-                  labelText: labels['descripcion'] ?? 'DESCRIPCIÓN'),
-            ),
-            const SizedBox(height: 12),
-            Row(children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _ctrls['recordId'],
-                  style: const TextStyle(color: Colors.white, fontFamily: 'RobotoMono'),
-                  decoration: InputDecoration(labelText: labels['recordId'] ?? 'ID'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextFormField(
-                  controller: _ctrls['fecha'],
-                  style: const TextStyle(color: Colors.white, fontFamily: 'RobotoMono'),
-                  decoration: InputDecoration(labelText: labels['fecha'] ?? 'FECHA'),
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                      builder: (ctx, child) => Theme(
-                        data: ThemeData.dark(),
-                        child: child!,
-                      ),
-                    );
-                    if (picked != null) {
-                      _ctrls['fecha']!.text =
-                          picked.toIso8601String().split('T').first;
-                    }
-                  },
-                ),
-              ),
-            ]),
-            const SizedBox(height: 12),
-            Row(children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _ctrls['codigo'],
-                  style: const TextStyle(color: Colors.white, fontFamily: 'RobotoMono'),
-                  decoration: InputDecoration(labelText: labels['codigo'] ?? 'CÓDIGO'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextFormField(
-                  controller: _ctrls['cuenta'],
-                  style: const TextStyle(color: Colors.white, fontFamily: 'RobotoMono'),
-                  decoration: InputDecoration(labelText: labels['cuenta'] ?? 'CUENTA'),
-                ),
-              ),
-            ]),
-            const SizedBox(height: 12),
-            Row(children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _ctrls['debito'],
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: AppTheme.accentPrimary, fontFamily: 'RobotoMono'),
-                  decoration: InputDecoration(labelText: labels['debito'] ?? 'DÉBITO'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextFormField(
-                  controller: _ctrls['credito'],
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: AppTheme.accentRed, fontFamily: 'RobotoMono'),
-                  decoration: InputDecoration(labelText: labels['credito'] ?? 'CRÉDITO'),
-                ),
-              ),
-            ]),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: _saving ? null : _save,
-                child: _saving
-                    ? const SizedBox(
-                        width: 20, height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: AppTheme.darkBg))
-                    : const Text('GUARDAR FILA'),
-              ),
-            ),
+            body,
           ],
         ),
       ),

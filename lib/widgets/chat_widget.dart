@@ -110,9 +110,9 @@ class _ChatWidgetState extends State<ChatWidget>
               height: 480,
               margin: const EdgeInsets.only(bottom: 72, right: 0),
               decoration: BoxDecoration(
-                color: AppTheme.darkBg,
+                color: context.appBackground,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppTheme.darkBorder),
+                border: Border.all(color: context.appBorder),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.5),
@@ -127,11 +127,11 @@ class _ChatWidgetState extends State<ChatWidget>
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 14),
-                    decoration: const BoxDecoration(
-                      color: AppTheme.darkCard,
+                    decoration: BoxDecoration(
+                      color: context.appCard,
                       border: Border(
-                          bottom: BorderSide(color: AppTheme.darkBorder)),
-                      borderRadius: BorderRadius.vertical(
+                          bottom: BorderSide(color: context.appBorder)),
+                      borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(20)),
                     ),
                     child: Row(
@@ -151,17 +151,17 @@ class _ChatWidgetState extends State<ChatWidget>
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Text(
+                        Text(
                           'DolarSabio AI Assistant',
                           style: TextStyle(
-                              color: Colors.white,
+                              color: context.appOnSurface,
                               fontWeight: FontWeight.w600,
                               fontSize: 13),
                         ),
                         const Spacer(),
-                        const Text('vía GROQ',
+                        Text('vía GROQ',
                             style: TextStyle(
-                                color: AppTheme.darkMuted, fontSize: 9)),
+                                color: context.appMuted, fontSize: 9)),
                       ],
                     ),
                   ),
@@ -184,7 +184,7 @@ class _ChatWidgetState extends State<ChatWidget>
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       color:
-                                          AppTheme.darkMuted.withValues(alpha: 0.7),
+                                          context.appMuted.withValues(alpha: 0.7),
                                       fontSize: 11,
                                       fontStyle: FontStyle.italic,
                                     ),
@@ -209,11 +209,11 @@ class _ChatWidgetState extends State<ChatWidget>
                   // Input
                   Container(
                     padding: const EdgeInsets.all(12),
-                    decoration: const BoxDecoration(
-                      color: AppTheme.darkCard,
+                    decoration: BoxDecoration(
+                      color: context.appCard,
                       border: Border(
-                          top: BorderSide(color: AppTheme.darkBorder)),
-                      borderRadius: BorderRadius.vertical(
+                          top: BorderSide(color: context.appBorder)),
+                      borderRadius: const BorderRadius.vertical(
                           bottom: Radius.circular(20)),
                     ),
                     child: Row(
@@ -221,25 +221,25 @@ class _ChatWidgetState extends State<ChatWidget>
                         Expanded(
                           child: TextField(
                             controller: _ctrl,
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 12),
+                            style: TextStyle(
+                                color: context.appOnSurface, fontSize: 12),
                             decoration: InputDecoration(
                               hintText: 'Pregunta sobre tus finanzas...',
-                              hintStyle: const TextStyle(
-                                  color: AppTheme.darkMuted, fontSize: 12),
+                              hintStyle: TextStyle(
+                                  color: context.appMuted, fontSize: 12),
                               filled: true,
-                              fillColor: AppTheme.darkBg,
+                              fillColor: context.appBackground,
                               contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 14, vertical: 10),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(20),
-                                borderSide: const BorderSide(
-                                    color: AppTheme.darkBorder),
+                                borderSide: BorderSide(
+                                    color: context.appBorder),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(20),
-                                borderSide: const BorderSide(
-                                    color: AppTheme.darkBorder),
+                                borderSide: BorderSide(
+                                    color: context.appBorder),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(20),
@@ -261,14 +261,14 @@ class _ChatWidgetState extends State<ChatWidget>
                               shape: BoxShape.circle,
                             ),
                             child: _loading
-                                ? const Padding(
-                                    padding: EdgeInsets.all(8),
+                                ? Padding(
+                                    padding: const EdgeInsets.all(8),
                                     child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: AppTheme.darkBg),
+                                        color: AppTheme.onAccentBrand),
                                   )
-                                : const Icon(Icons.send_rounded,
-                                    color: AppTheme.darkBg, size: 16),
+                                : Icon(Icons.send_rounded,
+                                    color: AppTheme.onAccentBrand, size: 16),
                           ),
                         ),
                       ],
@@ -301,7 +301,7 @@ class _ChatWidgetState extends State<ChatWidget>
               child: Icon(
                 _open ? Icons.close : Icons.chat_bubble_rounded,
                 key: ValueKey(_open),
-                color: AppTheme.darkBg,
+                color: AppTheme.onAccentBrand,
                 size: 24,
               ),
             ),
@@ -333,7 +333,7 @@ class _ChatBubble extends StatelessWidget {
             decoration: BoxDecoration(
               color: isUser
                   ? const Color(0xFF059669)
-                  : AppTheme.darkCard,
+                  : context.appCard,
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(14),
                 topRight: const Radius.circular(14),
@@ -342,19 +342,23 @@ class _ChatBubble extends StatelessWidget {
               ),
               border: isUser
                   ? null
-                  : Border.all(color: AppTheme.darkBorder),
+                  : Border.all(color: context.appBorder),
             ),
             child: Text(
               message.text,
-              style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.4),
+              style: TextStyle(
+                color: isUser ? Colors.white : context.appOnSurface,
+                fontSize: 12,
+                height: 1.4,
+              ),
             ),
           ),
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: Text(
               '${isUser ? 'Tú' : 'Asistente'} • ${_fmt(message.timestamp)}',
-              style: const TextStyle(
-                  color: AppTheme.darkMuted, fontSize: 9),
+              style: TextStyle(
+                  color: context.appMuted, fontSize: 9),
             ),
           ),
         ],
@@ -375,9 +379,9 @@ class _TypingIndicator extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppTheme.darkCard,
+          color: context.appCard,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.darkBorder),
+          border: Border.all(color: context.appBorder),
         ),
         child: const SizedBox(
           width: 20,
