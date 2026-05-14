@@ -15,6 +15,154 @@ double _balanceCapitalProgress(FinancialSummary s) {
   return (s.balance / hi).clamp(0, 1);
 }
 
+// ── Agregación para gráfico lineal (semana / mes / año) ─────────────────────
+
+enum _TrendPeriod { week, month, year }
+
+class _TrendBucket {
+  final DateTime labelDate;
+  final double credito;
+  final double debito;
+
+  const _TrendBucket({
+    required this.labelDate,
+    required this.credito,
+    required this.debito,
+  });
+}
+
+DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+DateTime _weekStartMonday(DateTime d) {
+  final day = _dateOnly(d);
+  return day.subtract(Duration(days: day.weekday - DateTime.monday));
+}
+
+/// Inicio del mes calendario que contiene [d].
+DateTime _monthStart(DateTime d) => DateTime(d.year, d.month, 1);
+
+int? _indexForWeek(DateTime d, List<DateTime> weekStarts) {
+  for (var i = 0; i < weekStarts.length; i++) {
+    final start = weekStarts[i];
+    final end = start.add(const Duration(days: 7));
+    if (!d.isBefore(start) && d.isBefore(end)) return i;
+  }
+  return null;
+}
+
+int? _indexForMonth(DateTime d, List<DateTime> monthStarts) {
+  final m = _monthStart(d);
+  final i = monthStarts.indexWhere(
+    (x) => x.year == m.year && x.month == m.month,
+  );
+  return i >= 0 ? i : null;
+}
+
+List<_TrendBucket> _aggregateTrend(
+  List<Transaction> transactions,
+  _TrendPeriod period,
+) {
+  final now = DateTime.now();
+  final today = _dateOnly(now);
+
+  switch (period) {
+    case _TrendPeriod.week:
+      final currentWeekStart = _weekStartMonday(today);
+      final weekStarts = List<DateTime>.generate(
+        8,
+        (i) => currentWeekStart.subtract(Duration(days: 7 * (7 - i))),
+      );
+      final creditos = List<double>.filled(8, 0);
+      final debitos = List<double>.filled(8, 0);
+      final rangeStart = weekStarts.first;
+      final rangeEnd = weekStarts.last.add(const Duration(days: 7));
+      for (final t in transactions) {
+        final d = DateTime.tryParse(t.fecha);
+        if (d == null) continue;
+        final day = _dateOnly(d);
+        if (day.isBefore(rangeStart) || !day.isBefore(rangeEnd)) continue;
+        final idx = _indexForWeek(day, weekStarts);
+        if (idx == null) continue;
+        creditos[idx] += t.credito;
+        debitos[idx] += t.debito;
+      }
+      return List.generate(
+        8,
+        (i) => _TrendBucket(
+          labelDate: weekStarts[i],
+          credito: creditos[i],
+          debito: debitos[i],
+        ),
+      );
+
+    case _TrendPeriod.month:
+      final monthStarts = List<DateTime>.generate(12, (i) {
+        final monthsBack = 11 - i;
+        return DateTime(now.year, now.month - monthsBack, 1);
+      });
+      final creditos = List<double>.filled(12, 0);
+      final debitos = List<double>.filled(12, 0);
+      final rangeStart = _monthStart(monthStarts.first);
+      final rangeEnd = DateTime(
+        monthStarts.last.year,
+        monthStarts.last.month + 1,
+        1,
+      );
+      for (final t in transactions) {
+        final d = DateTime.tryParse(t.fecha);
+        if (d == null) continue;
+        final day = _dateOnly(d);
+        if (day.isBefore(rangeStart) || !day.isBefore(rangeEnd)) continue;
+        final idx = _indexForMonth(day, monthStarts);
+        if (idx == null) continue;
+        creditos[idx] += t.credito;
+        debitos[idx] += t.debito;
+      }
+      return List.generate(
+        12,
+        (i) => _TrendBucket(
+          labelDate: monthStarts[i],
+          credito: creditos[i],
+          debito: debitos[i],
+        ),
+      );
+
+    case _TrendPeriod.year:
+      final yEnd = now.year;
+      final yStart = yEnd - 5;
+      final years = List<int>.generate(6, (i) => yStart + i);
+      final creditos = List<double>.filled(6, 0);
+      final debitos = List<double>.filled(6, 0);
+      for (final t in transactions) {
+        final d = DateTime.tryParse(t.fecha);
+        if (d == null) continue;
+        if (d.year < yStart || d.year > yEnd) continue;
+        final idx = d.year - yStart;
+        creditos[idx] += t.credito;
+        debitos[idx] += t.debito;
+      }
+      return List.generate(
+        6,
+        (i) => _TrendBucket(
+          labelDate: DateTime(years[i], 1, 1),
+          credito: creditos[i],
+          debito: debitos[i],
+        ),
+      );
+  }
+}
+
+String _trendAxisLabel(_TrendPeriod period, DateTime d) {
+  switch (period) {
+    case _TrendPeriod.week:
+      return DateFormat('d/M').format(d);
+    case _TrendPeriod.month:
+      return DateFormat('MM/yy').format(d);
+    case _TrendPeriod.year:
+      return DateFormat('yyyy').format(d);
+  }
+}
+
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
@@ -101,6 +249,11 @@ class DashboardScreen extends StatelessWidget {
 
           // ── Gráfico de barras ─────────────────────────────────────────
           _FlowChart(summary: summary),
+
+          const SizedBox(height: 16),
+
+          // ── Gráfico lineal (semana / mes / año) ───────────────────────
+          _MovementTrendChart(transactions: provider.transactions),
 
           const SizedBox(height: 16),
 
@@ -337,6 +490,261 @@ class _FlowChart extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── Gráfico lineal: evolución por período ───────────────────────────────────
+class _MovementTrendChart extends StatefulWidget {
+  final List<Transaction> transactions;
+
+  const _MovementTrendChart({required this.transactions});
+
+  @override
+  State<_MovementTrendChart> createState() => _MovementTrendChartState();
+}
+
+class _MovementTrendChartState extends State<_MovementTrendChart> {
+  _TrendPeriod _period = _TrendPeriod.month;
+
+  @override
+  Widget build(BuildContext context) {
+    final buckets = _aggregateTrend(widget.transactions, _period);
+    double maxY = 1;
+    for (final b in buckets) {
+      if (b.credito > maxY) maxY = b.credito;
+      if (b.debito > maxY) maxY = b.debito;
+    }
+    maxY *= 1.18;
+    if (maxY < 1) maxY = 1;
+
+    final n = buckets.length;
+    final maxX = (n - 1).toDouble();
+
+    final creditSpots = <FlSpot>[
+      for (var i = 0; i < n; i++) FlSpot(i.toDouble(), buckets[i].credito),
+    ];
+    final debitSpots = <FlSpot>[
+      for (var i = 0; i < n; i++) FlSpot(i.toDouble(), buckets[i].debito),
+    ];
+
+    return Container(
+      height: 300,
+      padding: const EdgeInsets.all(16),
+      decoration: context.appCardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('EVOLUCIÓN DE MOVIMIENTOS', style: context.appLabelStyle),
+          const SizedBox(height: 4),
+          Text(
+            'Totales de créditos y débitos por período',
+            style: TextStyle(color: context.appMuted, fontSize: 10),
+          ),
+          const SizedBox(height: 10),
+          SegmentedButton<_TrendPeriod>(
+            segments: const [
+              ButtonSegment(
+                value: _TrendPeriod.week,
+                label: Text('Semanal'),
+                icon: Icon(Icons.view_week_outlined, size: 16),
+              ),
+              ButtonSegment(
+                value: _TrendPeriod.month,
+                label: Text('Mensual'),
+                icon: Icon(Icons.calendar_view_month_outlined, size: 16),
+              ),
+              ButtonSegment(
+                value: _TrendPeriod.year,
+                label: Text('Anual'),
+                icon: Icon(Icons.calendar_today_outlined, size: 16),
+              ),
+            ],
+            selected: {_period},
+            onSelectionChanged: (s) => setState(() => _period = s.first),
+            showSelectedIcon: false,
+            style: ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _LegendDot(color: AppTheme.accentRed, label: 'Créditos'),
+              const SizedBox(width: 16),
+              _LegendDot(color: AppTheme.accentPrimary, label: 'Débitos'),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Expanded(
+            child: LineChart(
+              LineChartData(
+                minX: 0,
+                maxX: maxX,
+                minY: 0,
+                maxY: maxY,
+                clipData: const FlClipData.all(),
+                lineTouchData: LineTouchData(
+                  enabled: true,
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (_) => context.appCard,
+                    tooltipRoundedRadius: 8,
+                    getTooltipItems: (spots) {
+                      return spots.map((spot) {
+                        final isCred = spot.barIndex == 0;
+                        final label = isCred ? 'Créditos' : 'Débitos';
+                        final color =
+                            isCred ? AppTheme.accentRed : AppTheme.accentPrimary;
+                        final i = spot.x.toInt().clamp(0, n - 1);
+                        final axis = _trendAxisLabel(_period, buckets[i].labelDate);
+                        return LineTooltipItem(
+                          '$axis\n$label: \$${spot.y.toStringAsFixed(2)}',
+                          TextStyle(
+                            color: color,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                            fontFamily: 'RobotoMono',
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
+                ),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  getDrawingHorizontalLine: (_) => FlLine(
+                    color: context.appBorder,
+                    strokeWidth: 1,
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      interval: maxY > 0 ? maxY / 4 : null,
+                      getTitlesWidget: (value, meta) {
+                        if (value > meta.max) return const SizedBox.shrink();
+                        return Text(
+                          _compactAxisMoney(value),
+                          style: TextStyle(
+                            color: context.appMuted,
+                            fontSize: 8,
+                            fontFamily: 'RobotoMono',
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 26,
+                      interval: 1,
+                      getTitlesWidget: (value, meta) {
+                        final i = value.round();
+                        if (i < 0 || i >= n) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            _trendAxisLabel(_period, buckets[i].labelDate),
+                            style: TextStyle(
+                              color: context.appMuted,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'RobotoMono',
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: creditSpots,
+                    isCurved: true,
+                    color: AppTheme.accentRed,
+                    barWidth: 2.5,
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (s, p, bar, i) => FlDotCirclePainter(
+                        radius: 3,
+                        color: AppTheme.accentRed,
+                        strokeWidth: 1,
+                        strokeColor: context.appSurface,
+                      ),
+                    ),
+                  ),
+                  LineChartBarData(
+                    spots: debitSpots,
+                    isCurved: true,
+                    color: AppTheme.accentPrimary,
+                    barWidth: 2.5,
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (s, p, bar, i) => FlDotCirclePainter(
+                        radius: 3,
+                        color: AppTheme.accentPrimary,
+                        strokeWidth: 1,
+                        strokeColor: context.appSurface,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _compactAxisMoney(double v) {
+  if (v >= 1e6) return '${(v / 1e6).toStringAsFixed(1)}M';
+  if (v >= 1e3) return '${(v / 1e3).toStringAsFixed(1)}k';
+  return v.toStringAsFixed(0);
+}
+
+class _LegendDot extends StatelessWidget {
+  final Color color;
+  final String label;
+
+  const _LegendDot({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            color: context.appMuted,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
