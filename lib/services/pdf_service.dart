@@ -95,11 +95,11 @@ class PdfService {
               children: [
                 _summaryItem(
                     'Balance Total', '\$${summary.balance.toStringAsFixed(2)}'),
-                _summaryItem('Total Créditos',
-                    '\$${summary.totalIncomes.toStringAsFixed(2)}',
-                    color: PdfColors.green700),
                 _summaryItem('Total Débitos',
                     '\$${summary.totalExpenses.toStringAsFixed(2)}',
+                    color: PdfColors.green700),
+                _summaryItem('Total Créditos',
+                    '\$${summary.totalIncomes.toStringAsFixed(2)}',
                     color: PdfColors.red700),
                 _summaryItem(
                     'Registros', '${summary.transactionCount}'),
@@ -149,14 +149,22 @@ class PdfService {
                 return pw.TableRow(
                   decoration: pw.BoxDecoration(color: bg),
                   children: [
-                    t.recordId,
-                    t.codigo,
-                    t.cuenta,
-                    t.descripcion,
-                    t.fecha,
-                    t.debito.toStringAsFixed(2),
-                    t.credito.toStringAsFixed(2),
-                  ].map((c) => _dataCell(c)).toList(),
+                    _dataCell(t.recordId),
+                    _dataCell(t.codigo),
+                    _dataCell(t.cuenta),
+                    _dataCell(t.descripcion),
+                    _dataCell(t.fecha),
+                    _dataCell(
+                      t.debito.toStringAsFixed(2),
+                      color: PdfColors.green700,
+                      bold: true,
+                    ),
+                    _dataCell(
+                      t.credito.toStringAsFixed(2),
+                      color: PdfColors.red700,
+                      bold: true,
+                    ),
+                  ],
                 );
               }),
             ],
@@ -388,10 +396,21 @@ class PdfService {
     );
   }
 
-  static pw.Widget _dataCell(String text) {
+  static pw.Widget _dataCell(
+    String text, {
+    PdfColor? color,
+    bool bold = false,
+  }) {
     return pw.Padding(
       padding: const pw.EdgeInsets.all(4),
-      child: pw.Text(text, style: const pw.TextStyle(fontSize: 7)),
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(
+          fontSize: 7,
+          color: color,
+          fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+        ),
+      ),
     );
   }
 }
